@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: semantic-search
+
+  ai:
+    model:
+      embedding: ollama
+    ollama:
+      base-url: http://localhost:11434
+      embedding:
+        model: nomic-embed-text
+        keep-alive: 5m
+        truncate: true
+        # options:
+        #   num-ctx: 8192   # if you need to tune
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/contracts?rewriteBatchedStatements=true
+    username: contracts
+    password: contracts
+    hikari:
+      maximum-pool-size: 10
+
+  jpa:
+    hibernate:
+      ddl-auto: validate        # Flyway owns the schema
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+app:
+  ollama:
+    base-url: http://localhost:11434
+    embedding-model: nomic-embed-text
+    expected-dimensions: 768
+    timeout: 30s
+  search:
+    default-limit: 20
+    max-limit: 100
+    # cosine similarity floor below which results are dropped (0..1)
+    min-score: 0.0
+  ingestion:
+    batch-size: 32
+
+logging:
+  level:
+    com.example.contracts: DEBUG
