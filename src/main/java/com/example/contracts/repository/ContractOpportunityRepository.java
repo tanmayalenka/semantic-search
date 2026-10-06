@@ -1,5 +1,6 @@
 package com.example.contracts.repository;
 
+import com.example.contracts.dto.OpportunityHit;
 import com.example.contracts.dto.SearchResultItem;
 import com.example.contracts.entity.ContractOpportunity;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,6 +11,58 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface ContractOpportunityRepository extends JpaRepository<ContractOpportunity, String> {
+
+    /**
+     * Ranker 1 — semantic. Cosine similarity over the title embedding.
+     * score is in [0, 1] for text embeddings; higher is better.
+     */
+    @Query(value = """
+        SELECT o.notice_id      AS noticeId,
+               o.title          AS title,
+               o.solicitation   AS solicitation,
+               o.department     AS department,
+               o.sub_tier       AS subTier,
+               o.office         AS office,
+               o.type           AS type,
+               1 - (o.title_embedding <=> CAST(:queryEmbedding AS vector)) AS score
+        FROM contract_opportunities o
+        WHERE o.title_embedding IS NOT NULL
+        ORDER BY o.title_embedding <=> CAST(:queryEmbedding AS vector)
+        LIMIT :limit
+        """,
+            nativeQuery = true)
+    List<OpportunityHit> searchByVector(
+            @Param("queryEmbedding") String queryEmbedding,
+            @Param("limit") int limit);
+
+    /**
+     * Ranker 2 — keyword. Postgres full-text search over the generated
+     * tsvector column. score is ts_rank, which is unbounded but in
+     * practice falls in ~[0.05, 0.5] for title-length text.
+     *
+     * websearch_to_tsquery is deliberately used over plainto_tsquery:
+     * it accepts the syntax users actually type ("cloud -aws", quoted
+     * phrases, OR) without throwing on malformed input.
+     */
+    @Query(value = """
+        SELECT o.notice_id      AS noticeId,
+               o.title          AS title,
+               o.solicitation   AS solicitation,
+               o.department     AS department,
+               o.sub_tier       AS subTier,
+               o.office         AS office,
+               o.type           AS type,
+               ts_rank(o.title_tsv,
+                       websearch_to_tsquery('english', :query)) AS score
+        FROM contract_opportunities o
+        WHERE o.title_tsv @@ websearch_to_tsquery('english', :query)
+        ORDER BY score DESC
+        LIMIT :limit
+        """,
+            nativeQuery = true)
+    List<OpportunityHit> searchByKeyword(
+            @Param("query") String query,
+            @Param("limit") int limit);
 
     /**
      * Semantic search over titles. Returns a projection directly into

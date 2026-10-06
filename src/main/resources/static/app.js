@@ -15,11 +15,13 @@
         results:    $('results'),
     };
 
+    let currentMode = 'hybrid';
+
     // ---- API ----
 
     const api = {
-        async search(q, limit, minScore) {
-            const params = new URLSearchParams({ q, limit, minScore });
+        async search(q, limit, minScore, mode) {
+            const params = new URLSearchParams({ q, limit, minScore, mode });
             return request(`/api/opportunities/search?${params}`);
         },
         async backfill(batchSize, maxBatches) {
@@ -93,7 +95,7 @@
         header.className = 'results-header';
         header.textContent =
             `${response.returned} result${response.returned === 1 ? '' : 's'} ` +
-            `· ${response.tookMs} ms · limit ${response.limit} · min score ${response.minScore.toFixed(2)}`;
+            `· ${response.tookMs} ms · ${response.mode} · limit ${response.limit}`;
 
         const cards = response.results.map(renderCard);
         el.results.replaceChildren(header, ...cards);
@@ -112,9 +114,13 @@
         if (r.solicitation) footerParts.push(`<span class="mono">Sol: ${escapeHtml(r.solicitation)}</span>`);
         if (r.noticeId)     footerParts.push(`<span class="mono">${escapeHtml(r.noticeId)}</span>`);
 
+        const matchTag = r.matchedBy
+            ? `<span class="match-tag ${r.matchedBy}">${r.matchedBy}</span>`
+            : '';
+
         card.innerHTML = `
             <div class="result-top">
-                <div class="result-title">${escapeHtml(r.title)}</div>
+                <div class="result-title">${escapeHtml(r.title)}${matchTag}</div>
                 <div class="score-badge ${scoreClass(r.score)}">${r.score.toFixed(3)}</div>
             </div>
             ${metaParts.length
@@ -144,7 +150,7 @@
         try {
             const limit = parseInt(el.limit.value, 10) || 20;
             const minScore = parseFloat(el.minScore.value) || 0;
-            const response = await api.search(q, limit, minScore);
+            const response = await api.search(q, limit, minScore, currentMode);
             clearStatus();
             renderResults(response);
         } catch (err) {
@@ -207,6 +213,15 @@
         chip.addEventListener('click', () => {
             el.query.value = chip.dataset.query;
             el.query.focus();
+        });
+    });
+
+    document.querySelectorAll('.mode-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.mode-btn').forEach((b) => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentMode = btn.dataset.mode;
+            if (el.query.value.trim()) doSearch();
         });
     });
 

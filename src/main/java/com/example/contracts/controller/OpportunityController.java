@@ -2,6 +2,7 @@ package com.example.contracts.controller;
 
 import com.example.contracts.dto.SearchResponse;
 import com.example.contracts.service.OpportunitySearchService;
+import com.example.contracts.service.SearchMode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,9 +25,10 @@ public class OpportunityController {
     @GetMapping("/search")
     public SearchResponse search(
             @RequestParam("q") String query,
+            @RequestParam(value = "mode", required = false) String mode,
             @RequestParam(value = "limit", required = false) Integer limit,
             @RequestParam(value = "minScore", required = false) Double minScore) {
 
-        return searchService.search(query, limit, minScore);
+        return searchService.search(query, SearchMode.parse(mode), limit, minScore);
     }
 }
