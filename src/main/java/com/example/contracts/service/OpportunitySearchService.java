@@ -1,5 +1,6 @@
 package com.example.contracts.service;
 
+import com.example.contracts.config.CacheConfig;
 import com.example.contracts.config.SearchProperties;
 import com.example.contracts.dto.OpportunityHit;
 import com.example.contracts.embedding.EmbeddingService;
@@ -9,6 +10,7 @@ import com.example.contracts.dto.SearchResultItem;
 import com.example.contracts.repository.ContractOpportunityRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -34,6 +36,10 @@ public class OpportunitySearchService {
     private final ContractOpportunityRepository repository;
     private final SearchProperties searchProperties;
 
+    @Cacheable(
+            cacheNames = CacheConfig.SEARCH_CACHE,
+            key = "#mode.name() + '|' + #rawQuery.strip() + '|' + (#requestedLimit ?: 0) + '|' + (#requestedMinScore ?: -1)",
+            unless = "#result == null || #result.results().isEmpty()")
     public SearchResponse search(String rawQuery, SearchMode mode,
                                  Integer requestedLimit, Double requestedMinScore) {
 

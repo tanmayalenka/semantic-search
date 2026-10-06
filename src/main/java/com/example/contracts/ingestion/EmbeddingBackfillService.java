@@ -1,10 +1,12 @@
 package com.example.contracts.ingestion;
 
+import com.example.contracts.config.CacheConfig;
 import com.example.contracts.embedding.EmbeddingService;
 import com.example.contracts.embedding.VectorCodec;
 import com.example.contracts.repository.ContractOpportunityRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +32,7 @@ public class EmbeddingBackfillService {
      * @param maxBatches     stop after this many batches (0 = unlimited, for testing)
      * @return total rows embedded in this run
      */
+    @CacheEvict(cacheNames = CacheConfig.SEARCH_CACHE, allEntries = true)
     public long backfill(int batchSize, int maxBatches) {
         log.info("Phase 2: backfilling embeddings, batchSize={}", batchSize);
 
